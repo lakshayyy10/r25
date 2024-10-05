@@ -20,7 +20,7 @@ def handle_client(conn, addr):
                 if not data:
                     break
                 print(f"[{addr}] {data}")
-                broadcast(data, conn)
+                broadcast(f"[{addr}] {data}", conn)
             except ConnectionResetError:
                 break
     
@@ -29,13 +29,19 @@ def handle_client(conn, addr):
     clients.remove(conn)
 
 # Function to broadcast messages to other clients
-def broadcast(message, sender_conn):
+def broadcast(message, sender_conn=None):
     for client in clients:
-        if client != sender_conn:
+        if client != sender_conn:  # Don't send the message back to the sender
             try:
                 client.sendall(message.encode('utf-8'))
             except BrokenPipeError:
                 pass
+
+# Function for server to send its own messages
+def server_send():
+    while True:
+        message = input("Server: ")
+        broadcast(f"Server: {message}")  # Broadcast server messages to all clients
 
 # Main server loop
 def start_server():
@@ -44,10 +50,14 @@ def start_server():
         server_socket.listen()
         print(f"[LISTENING] Server is listening on {HOST}:{PORT}")
         
+        # Start a thread for server-side messaging
+        server_thread = threading.Thread(target=server_send)
+        server_thread.start()
+        
         while True:
             conn, addr = server_socket.accept()
-            thread = threading.Thread(target=handle_client, args=(conn, addr))
-            thread.start()
+            client_thread = threading.Thread(target=handle_client, args=(conn, addr))
+            client_thread.start()
 
 # Start the server
 if __name__ == "__main__":
