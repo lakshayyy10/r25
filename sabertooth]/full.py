@@ -27,14 +27,12 @@ interpolation_factor = 10
 def map_joystick_to_motor(joystick_value, motor_stop, motor_min, motor_max):
     if joystick_value == 0:
         return motor_stop  # Stop position
-        
     elif joystick_value > 0:
         # Forward direction
         return int((joystick_value / joystick_max) * (motor_max - motor_stop) + motor_stop)
     else:
         # Reverse direction
         return int((joystick_value / joystick_min) * (motor_stop - motor_min) + motor_min)
-        
 
 # Function to interpolate motor speed gradually
 def interpolate_motor_speed(current_speed, target_speed, interpolation_factor):
@@ -48,7 +46,7 @@ def interpolate_motor_speed(current_speed, target_speed, interpolation_factor):
 # Main loop
 try:
     with serial.Serial(serial_port, baud_rate) as ser:
-        current_motor_1_speed = motor_1_stop   
+        current_motor_1_speed = motor_1_stop
         current_motor_2_speed = motor_2_stop
 
         # Initialize pygame
@@ -70,11 +68,18 @@ try:
             pygame.event.pump()  # Process the event queue
 
             # Get the current joystick axis values
-            axis_forward_backward = joystick.get_axis(1)  # Usually Y-axis
+            axis_forward_backward = joystick.get_axis(1)  # Y-axis for forward/backward
+            axis_left_right = joystick.get_axis(0)        # X-axis for left/right
 
-            # Map the joystick value to motor speeds
+            # Map the joystick value for forward/backward to motor speeds
             target_motor_1_speed = map_joystick_to_motor(axis_forward_backward, motor_1_stop, motor_1_min, motor_1_max)
             target_motor_2_speed = map_joystick_to_motor(axis_forward_backward, motor_2_stop, motor_2_min, motor_2_max)
+
+            # Adjust for left and right control
+            if axis_left_right < 0:  # Turning left (reduce speed on right motor)
+                target_motor_1_speed = int(target_motor_1_speed * (1 + axis_left_right))  # Reduce left motor speed
+            elif axis_left_right > 0:  # Turning right (reduce speed on left motor)
+                target_motor_2_speed = int(target_motor_2_speed * (1 - axis_left_right))  # Reduce right motor speed
 
             # Interpolate motor speeds
             interpolated_motor_1_speed = interpolate_motor_speed(current_motor_1_speed, target_motor_1_speed, interpolation_factor)
